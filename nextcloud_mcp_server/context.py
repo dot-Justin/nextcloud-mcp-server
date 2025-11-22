@@ -1,5 +1,7 @@
 """Helper functions for accessing context in MCP tools."""
 
+import os
+
 from mcp.server.fastmcp import Context
 
 from nextcloud_mcp_server.client import NextcloudClient
@@ -10,12 +12,13 @@ async def get_client(ctx: Context) -> NextcloudClient:
     """
     Get the appropriate Nextcloud client based on authentication mode.
 
-    ADR-005 compliant implementation supporting two modes:
+    ADR-005 compliant implementation supporting three deployment modes:
     1. BasicAuth mode: Returns shared client from lifespan context
     2. Multi-audience mode (ENABLE_TOKEN_EXCHANGE=false, default):
        Token already contains both MCP and Nextcloud audiences - use directly
     3. Token exchange mode (ENABLE_TOKEN_EXCHANGE=true):
        Exchange MCP token for Nextcloud token via RFC 8693
+    4. Smithery mode: Creates client from session config (per-request)
 
     SECURITY: Token passthrough has been REMOVED. All OAuth modes validate
     proper token audiences per MCP Security Best Practices specification.
@@ -46,6 +49,42 @@ async def get_client(ctx: Context) -> NextcloudClient:
     settings = get_settings()
     lifespan_ctx = ctx.request_context.lifespan_context
 
+    # Smithery mode - create client from session config (per-request)
+    if hasattr(lifespan_ctx, "smithery_mode") and lifespan_ctx.smithery_mode:
+        # Get session config from context
+        session_config = ctx.session_config
+
+        # Temporarily set environment variables from session config
+        # This allows NextcloudClient.from_env() to work with session-specific values
+        old_host = os.environ.get("NEXTCLOUD_HOST")
+        old_username = os.environ.get("NEXTCLOUD_USERNAME")
+        old_password = os.environ.get("NEXTCLOUD_PASSWORD")
+
+        try:
+            os.environ["NEXTCLOUD_HOST"] = str(session_config.nextcloud_host)
+            os.environ["NEXTCLOUD_USERNAME"] = session_config.username
+            os.environ["NEXTCLOUD_PASSWORD"] = session_config.password
+
+            # Create client from environment (which now has session-specific values)
+            client = NextcloudClient.from_env()
+            return client
+        finally:
+            # Restore original environment variables
+            if old_host is not None:
+                os.environ["NEXTCLOUD_HOST"] = old_host
+            elif "NEXTCLOUD_HOST" in os.environ:
+                del os.environ["NEXTCLOUD_HOST"]
+
+            if old_username is not None:
+                os.environ["NEXTCLOUD_USERNAME"] = old_username
+            elif "NEXTCLOUD_USERNAME" in os.environ:
+                del os.environ["NEXTCLOUD_USERNAME"]
+
+            if old_password is not None:
+                os.environ["NEXTCLOUD_PASSWORD"] = old_password
+            elif "NEXTCLOUD_PASSWORD" in os.environ:
+                del os.environ["NEXTCLOUD_PASSWORD"]
+
     # BasicAuth mode - use shared client (no token exchange)
     if hasattr(lifespan_ctx, "client"):
         return lifespan_ctx.client
@@ -72,6 +111,6 @@ async def get_client(ctx: Context) -> NextcloudClient:
 
     # Unknown context type
     raise AttributeError(
-        f"Lifespan context does not have 'client' or 'nextcloud_host' attribute. "
+        f"Lifespan context does not have 'client', 'nextcloud_host', or 'smithery_mode' attribute. "
         f"Type: {type(lifespan_ctx)}"
     )

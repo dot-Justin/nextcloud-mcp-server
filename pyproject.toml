@@ -36,6 +36,7 @@ dependencies = [
     "python-json-logger>=3.2.0", # Structured JSON logging
     "jinja2>=3.1.6",
     "langchain-text-splitters>=1.0.0",
+    "smithery>=0.4.2", # Smithery deployment support
 ]
 classifiers = [
     "Development Status :: 4 - Beta",
@@ -91,6 +92,9 @@ ignored_tag_formats = [
     "nextcloud-mcp-server-*"
 ]
 
+[tool.smithery]
+server = "nextcloud_mcp_server.smithery_server:create_server"
+
 [tool.ruff.lint]
 extend-select = ["I"]
 
@@ -123,6 +127,8 @@ dev = [
 
 [project.scripts]
 nextcloud-mcp-server = "nextcloud_mcp_server.cli:run"
+dev = "smithery.cli.dev:main"
+playground = "smithery.cli.playground:main"
 
 [[tool.uv.index]]
 name = "testpypi"
