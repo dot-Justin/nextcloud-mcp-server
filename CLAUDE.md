@@ -173,6 +173,40 @@ uv run python -m tests.load.benchmark --output results.json --verbose
 
 **Expected Performance**: 50-200 RPS for mixed workload, p50 <100ms, p95 <500ms, p99 <1000ms.
 
+### Smithery Deployment
+
+The server supports deployment on [Smithery](https://smithery.ai) with session-based configuration:
+
+```bash
+# Test locally with Smithery playground
+uv run playground
+
+# Or just run the dev server
+uv run dev
+```
+
+**Key Files:**
+- `smithery.yaml` - Smithery runtime configuration
+- `pyproject.toml` - Contains `[tool.smithery]` server path
+- `nextcloud_mcp_server/smithery_server.py` - Smithery entry point
+
+**Deployment Process:**
+1. Push code to GitHub (including `smithery.yaml`)
+2. Connect repository at [smithery.ai/new](https://smithery.ai/new)
+3. Deploy from the Deployments tab
+4. Server available at `https://server.smithery.ai/your-server/mcp`
+
+**Session Configuration:**
+Users provide per-session config (Nextcloud host, username, app password) instead of environment variables.
+
+**Limitations in Smithery Mode:**
+- No vector sync or semantic search (requires infrastructure)
+- No OAuth/OIDC (BasicAuth only via session config)
+- No background jobs or persistent storage
+- Clients created per-request (not shared/pooled)
+
+**For Details:** See `docs/smithery-deployment.md`
+
 ## Database Inspection
 
 **Credentials**: root/password, nextcloud/password, database: `nextcloud`
