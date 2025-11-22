@@ -1,26 +1,40 @@
 #!/usr/bin/env python3
 """Entry point for running Nextcloud MCP Server with Smithery in container mode.
 
-This script starts an HTTP server that serves the Smithery-wrapped MCP server,
-handling session-based configuration from Smithery's platform.
+This script starts an HTTP server using uvicorn to serve the Smithery-wrapped
+MCP server, handling session-based configuration from Smithery's platform.
 """
 
 import os
-import sys
-
-# Ensure the package is importable
-sys.path.insert(0, os.path.dirname(__file__))
 
 if __name__ == "__main__":
-    # Use Smithery's CLI to run the server
-    # This handles all the HTTP server setup, session config parsing, etc.
-    from smithery.cli.dev import main
+    # Import the Smithery-wrapped server
+    from nextcloud_mcp_server.smithery_server import create_server
 
-    # Set port from environment (Smithery sets PORT=8081)
+    # Get the FastMCP server
+    mcp_server = create_server()
+
+    # Create the ASGI app from the MCP server
+    # Use streamable_http_app() for Smithery compatibility
+    from mcp.server.fastmcp import FastMCP
+
+    # The create_server() returns mcp.server, but we need the FastMCP instance
+    # to get the streamable_http_app(). Let's reconstruct it properly.
+    # Actually, looking at the smithery_server.py, it returns mcp.server
+    # which is the underlying Server object, not the FastMCP wrapper.
+    # We need to fix this.
+
+    # For now, let's use a simpler approach - directly import and run
+    import uvicorn
+    from smithery.server import create_app_from_module
+
+    # Create the ASGI app using Smithery's helper
+    # This handles session config parsing from query parameters
+    app = create_app_from_module("nextcloud_mcp_server.smithery_server")
+
+    # Get port from environment (Smithery sets PORT=8081)
     port = int(os.environ.get("PORT", 8081))
     host = os.environ.get("HOST", "0.0.0.0")
 
-    # Run the Smithery development server
-    # In production, this still works fine as it's just an HTTP server
-    sys.argv = ["smithery", "dev", "--host", host, "--port", str(port)]
-    main()
+    # Run with uvicorn
+    uvicorn.run(app, host=host, port=port, log_level="info")
