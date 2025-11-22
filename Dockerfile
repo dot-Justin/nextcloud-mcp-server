@@ -17,5 +17,9 @@ RUN uv sync --locked --no-dev --no-editable --no-cache
 
 ENV PYTHONUNBUFFERED=1
 ENV VIRTUAL_ENV=/app/.venv
+ENV PORT=8081
+ENV PATH="/app/.venv/bin:$PATH"
 
-ENTRYPOINT ["/app/.venv/bin/nextcloud-mcp-server", "--host", "0.0.0.0"]
+# For Smithery deployment, use the entry point script
+# For standard deployment, you can override with: docker run ... nextcloud-mcp-server --host 0.0.0.0
+ENTRYPOINT ["/app/.venv/bin/python", "smithery_entrypoint.py"]
