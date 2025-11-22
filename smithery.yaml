@@ -1,1 +1,23 @@
-runtime: "python"
+runtime: "container"
+build:
+  dockerfile: "Dockerfile"
+  dockerBuildPath: "."
+startCommand:
+  type: "http"
+  configSchema:
+    type: "object"
+    properties:
+      nextcloud_host:
+        type: "string"
+        description: "Your Nextcloud instance URL (e.g., https://cloud.example.com)"
+      username:
+        type: "string"
+        description: "Your Nextcloud username"
+      password:
+        type: "string"
+        description: "Your Nextcloud app password (create one in Settings → Security → Devices & sessions)"
+    required: ["nextcloud_host", "username", "password"]
+  exampleConfig:
+    nextcloud_host: "https://cloud.example.com"
+    username: "your-username"
+    password: "your-app-password"
